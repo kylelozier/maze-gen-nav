@@ -6,13 +6,13 @@
 void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
 
-static const i32 numsquare = 1024;
-static const i32 numsquareperside = 32;
+static const u32 numsquare = 4096;
+static const u32 numsquareperside = 64;
 
 int main(){
     //initialize window and associated variables.
-    const i32 swidth = 850;
-    const i32 sheight = 850;
+    const i32 swidth = 960;
+    const i32 sheight = 960;
     InitWindow(swidth, sheight, "A*Mazing.");
     SetTargetFPS(60);
     if(!IsWindowReady()){
@@ -43,7 +43,7 @@ int main(){
         ClearBackground(DARKGRAY);
 
         if(IsKeyReleased(KEY_N)){
-            mazegenrandom(issquare, &count, numsquare);
+            mazegenrandom(issquare, &count);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -80,13 +80,48 @@ void mazegenrandom(b8 *issquare, i32 *count){
         i32 randomnum = GetRandomValue(0, 1);
         if(randomnum == 0) {issquare[i] = true; ++*count;}
         else {issquare[i] = false;}
+    }//for loop setting squares to true/false for use with draw and pathing logic.
+
+    if(issquare[numsquareperside]){
+        issquare[numsquareperside] = false; //make entrance always have 1 path by it.
+        --*count;
     }
-    //for loop setting squares to true/false for use with draw and pathing logic.
+    if(issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)]) {
+        issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)] = false; //makes exit always have 1 path by it.
+        --count;
+    }
+
+
+    mazegenfillenclosedspace(issquare, count);
 }
 
 void mazegenfillenclosedspace(b8 *issquare, i32 *count){
-
+    b8 fill = true;
     floop(numsquare){
+        fill = true;
+        if(((i-1) < numsquare) && ((i & (numsquareperside-1)) != 0)){
+            if(!issquare[i-1]) {
+                fill = false;
+            }
+        }
 
+        if(((i+1) < numsquare) && ((i & (numsquareperside-1)) != (numsquareperside - 1))){
+            if(!issquare[i+1]) {
+                fill = false;
+            }
+        }
+
+        if(((i+numsquareperside) < numsquare)){
+            if(!issquare[i+numsquareperside]) {
+                fill = false;
+            }
+        }
+
+        if(((i-numsquareperside) < numsquare) && ((i & (numsquare-1)) != (numsquareperside - 1))){
+            if(!issquare[i-numsquareperside]) {
+                fill = false;
+            }
+        }
+        if(fill){issquare[i] = true; --*count;}
     }
 }
