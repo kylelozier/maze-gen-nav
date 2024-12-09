@@ -3,6 +3,11 @@
 #include "defines.h"
 #include "raymath.h"
 
+void mazegenrandom(b8 *issquare, i32 *count);
+void mazegenfillenclosedspace(b8 *issquare, i32 *count);
+
+static const i32 numsquare = 1024;
+static const i32 numsquareperside = 32;
 
 int main(){
     //initialize window and associated variables.
@@ -14,17 +19,14 @@ int main(){
         return 0;
     }
 
+    //initialize random generator.
+    i32 randomseed = (i32)GetTime();
+    SetRandomSeed(randomseed);
+
     //variables for the square logic array.
-    const i32 numsquare = 1024;
-    const i32 numsquareperside = 32;
     b8 issquare[numsquare] = {};
     i32 count = 0;
-    {
-        floop(numsquare){
-            if(i %2 == 0) {issquare[i] = true; count++;}
-            else {issquare[i] = false;}
-        }
-    } //for loop setting squares to true/false for use with draw and pathing logic.
+    mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
     f32 squarecalcx = (f32)(swidth / (numsquareperside + 2)); //+2 accounts for border.
@@ -33,22 +35,34 @@ int main(){
     Vector2 squareside = {squarecalcx, squarecalcy};
     Vector2 squareposdynamic = squarepos; //dynamic positioning that gets reset each loop for draw loop.
 
+    Vector2 greensquare = {0, 2 * squarecalcy};
+    Vector2 redsquare = {(numsquareperside + 1) * (squarecalcx), (numsquareperside -1) * squarecalcy};
+
     while(!WindowShouldClose())   {
         BeginDrawing();
-        ClearBackground(LIGHTGRAY);
+        ClearBackground(DARKGRAY);
+
+        if(IsKeyReleased(KEY_N)){
+            mazegenrandom(issquare, &count, numsquare);
+        }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
         {
             floop(numsquare){
-                if(issquare[i]) {DrawRectangleV(squareposdynamic, squareside, DARKGRAY);}
+                if(!issquare[i]) {DrawRectangleV(squareposdynamic, squareside, LIGHTGRAY);}
+                //else{DrawRectangleV(squareposdynamic, squareside, LIGHTGRAY);}
+
                 Vector2 addthis = {squarecalcx, 0.0f};
                 squareposdynamic = Vector2Add(squareposdynamic, addthis);
                 if((i + 1) % numsquareperside == 0) {
-                    Vector2 addthis2 = {(-squarecalcx * 32), squarecalcy};
+                    Vector2 addthis2 = {(-squarecalcx * numsquareperside), squarecalcy};
                     squareposdynamic = Vector2Add(squareposdynamic, addthis2);
                 }
             }
         } //for loop draw squares all over screen.
+
+        DrawRectangleV(greensquare, squareside, GREEN);
+        DrawRectangleV(redsquare, squareside, RED);
 
         DrawText("Maze Sulver...", 190, 200, 20, RED);
         DrawFPS(30,30);
@@ -58,4 +72,21 @@ int main(){
     printf("\n\n%d squares in array. \n%f pos\n%f side", count, squarecalcx, squarecalcy);
 
     return 0;
+}
+
+void mazegenrandom(b8 *issquare, i32 *count){
+    *count = 0;
+    floop(numsquare){
+        i32 randomnum = GetRandomValue(0, 1);
+        if(randomnum == 0) {issquare[i] = true; ++*count;}
+        else {issquare[i] = false;}
+    }
+    //for loop setting squares to true/false for use with draw and pathing logic.
+}
+
+void mazegenfillenclosedspace(b8 *issquare, i32 *count){
+
+    floop(numsquare){
+
+    }
 }

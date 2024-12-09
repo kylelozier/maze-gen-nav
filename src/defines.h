@@ -45,4 +45,4 @@ STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 #define false 0
 
 //wacky for loop macro ;
-#define floop(n) for (int i = 0; i < (n); i++)
+#define floop(n) for (unsigned int i = 0; i < (n); i++)
