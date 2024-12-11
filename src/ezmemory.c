@@ -114,7 +114,7 @@ char* get_memory_usage_str(){
 void* _darray_create(u64 length, u64 stride) {
     u64 header_size = DARRAY_FIELD_LENGTH * sizeof(u64);
     u64 array_size = length * stride;
-    u64* new_array = callocate(header_size + array_size, MEMORY_TAG_DARRAY);
+    u64* new_array = ezallocate(header_size + array_size, MEMORY_TAG_DARRAY);
     ezset_memory(new_array, 0, header_size + array_size);
     new_array[DARRAY_CAPACITY] = length;
     new_array[DARRAY_LENGTH] = 0;

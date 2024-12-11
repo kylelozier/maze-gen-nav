@@ -31,7 +31,10 @@ int main(){
     b8 issquare[numsquare] = {};
     i32 count = 0;
     mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
-
+    while(!mazenav(issquare)){
+        count = 0;
+        mazegenrandom(issquare, &count);
+    }
     mazegenfillenclosedspace(issquare, &count);
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
@@ -44,6 +47,7 @@ int main(){
     Vector2 greensquare = {0, 2 * squarecalcy};
     Vector2 redsquare = {(numsquareperside + 1) * (squarecalcx), (numsquareperside -1) * squarecalcy};
 
+    /*FRAME LOOP START*/
     while(!WindowShouldClose())   {
         BeginDrawing();
         ClearBackground(DARKGRAY);
@@ -121,7 +125,7 @@ void mazegenfillenclosedspace(b8 *issquare, i32 *count){
             }
         }
 
-        if(((i-numsquareperside) < numsquare) && ((i & (numsquare-1)) != (numsquareperside - 1))){
+        if(((i-numsquareperside) < numsquare)){
             if(!issquare[i-numsquareperside]) {
                 fill = false;
             }
@@ -140,7 +144,7 @@ b8 mazenav(b8 *issquare){
     void *navpaths = darray_create(u32); //dynamic array that resizes as u32 points [i] of issquare[] array are added.
     darray_push(navpaths, start); //add start to array to begin a path finding function.
 
-    while(issolvable == true){
+    while((issolvable == true) && (solved == false)){
         u32 navpathstotal = (u32)darray_length(navpaths); //cast darray_length u64 length to u32 for use in floop.
         floop(navpathstotal){
             u32* currentsquare = navpaths;
@@ -148,31 +152,56 @@ b8 mazenav(b8 *issquare){
 
             if(((current - 1) < numsquare) && ((current & (numsquareperside-1)) != 0)){
                 if((!issquare[current - 1]) && (!hasbeen[current - 1])) {
-
+                    if((current - 1) ==  end) {
+                        solved = true;
+                    }
+                    else{
+                        darray_push(navpaths, (current - 1));
+                    }
                 }
             }
 
             if(((current + 1) < numsquare) && ((current & (numsquareperside-1)) != (numsquareperside - 1))){
                 if((!issquare[current + 1]) && (!hasbeen[current + 1])) {
-
+                    if((current + 1) ==  end) {
+                        solved = true;
+                    }
+                    else{
+                        darray_push(navpaths, (current + 1));
+                    }
                 }
             }
 
             if(((current + numsquareperside) < numsquare)){
                 if((!issquare[current + numsquareperside]) && (!hasbeen[current + numsquareperside])) {
-
+                    if((current + numsquareperside) ==  end) {
+                        solved = true;
+                    }
+                    else{
+                        darray_push(navpaths, (current + numsquareperside));
+                    }
                 }
             }
 
-            if(((current - numsquareperside) < numsquare) && ((current & (numsquare - 1)) != (numsquareperside - 1))){
+            if(((current - numsquareperside) < numsquare)){
                 if((!issquare[current - numsquareperside]) && (!hasbeen[current - numsquareperside])) {
-
+                    if((current - numsquareperside) ==  end) {
+                        solved = true;
+                    }
+                    else{
+                        darray_push(navpaths, (current - numsquareperside));
+                    }
                 }
             }
 
             hasbeen[current] = true;
+            darray_pop_at(navpaths, i, navpaths);
+            if(darray_length(navpaths) < 1){
+                issolvable = false;
+            }
         }
     }
 
+    darray_destroy(navpaths);
     return solved;
 }
