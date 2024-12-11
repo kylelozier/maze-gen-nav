@@ -2,31 +2,37 @@
 #include "stdio.h"
 #include "defines.h"
 #include "raymath.h"
+#include "ezmemory.h"
 
 void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
+b8 mazenav(b8 *issquare);
 
 static const u32 numsquare = 4096;
 static const u32 numsquareperside = 64;
 
 int main(){
     //initialize window and associated variables.
-    const i32 swidth = 960;
-    const i32 sheight = 960;
+    const i32 swidth = 700;
+    const i32 sheight = 700;
     InitWindow(swidth, sheight, "A*Mazing.");
     SetTargetFPS(60);
     if(!IsWindowReady()){
         return 0;
     }
 
+    //TODO: make title screen with input for randomseed.
+
     //initialize random generator.
     i32 randomseed = (i32)GetTime();
     SetRandomSeed(randomseed);
 
-    //variables for the square logic array.
+    //variables for the square logic array aka maze.
     b8 issquare[numsquare] = {};
     i32 count = 0;
     mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
+
+    mazegenfillenclosedspace(issquare, &count);
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
     f32 squarecalcx = (f32)(swidth / (numsquareperside + 2)); //+2 accounts for border.
@@ -44,6 +50,7 @@ int main(){
 
         if(IsKeyReleased(KEY_N)){
             mazegenrandom(issquare, &count);
+            mazegenfillenclosedspace(issquare, &count);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -90,9 +97,6 @@ void mazegenrandom(b8 *issquare, i32 *count){
         issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)] = false; //makes exit always have 1 path by it.
         --count;
     }
-
-
-    mazegenfillenclosedspace(issquare, count);
 }
 
 void mazegenfillenclosedspace(b8 *issquare, i32 *count){
@@ -122,6 +126,53 @@ void mazegenfillenclosedspace(b8 *issquare, i32 *count){
                 fill = false;
             }
         }
-        if(fill){issquare[i] = true; --*count;}
+        if(fill){issquare[i] = true; ++*count;}
     }
+}
+
+b8 mazenav(b8 *issquare){
+    u32 start = numsquareperside;
+    u32 end = ((numsquareperside * numsquareperside) - numsquareperside - 1);
+    b8 hasbeen[numsquare] = {};//checking off squares the algorithm has passed through so no doubling back.
+    b8 issolvable = true; //potentially true until proven false.
+    b8 solved = false;    //condition true when solved.
+
+    void *navpaths = darray_create(u32); //dynamic array that resizes as u32 points [i] of issquare[] array are added.
+    darray_push(navpaths, start); //add start to array to begin a path finding function.
+
+    while(issolvable == true){
+        u32 navpathstotal = (u32)darray_length(navpaths); //cast darray_length u64 length to u32 for use in floop.
+        floop(navpathstotal){
+            u32* currentsquare = navpaths;
+            u32 current = currentsquare[i];
+
+            if(((current - 1) < numsquare) && ((current & (numsquareperside-1)) != 0)){
+                if((!issquare[current - 1]) && (!hasbeen[current - 1])) {
+
+                }
+            }
+
+            if(((current + 1) < numsquare) && ((current & (numsquareperside-1)) != (numsquareperside - 1))){
+                if((!issquare[current + 1]) && (!hasbeen[current + 1])) {
+
+                }
+            }
+
+            if(((current + numsquareperside) < numsquare)){
+                if((!issquare[current + numsquareperside]) && (!hasbeen[current + numsquareperside])) {
+
+                }
+            }
+
+            if(((current - numsquareperside) < numsquare) && ((current & (numsquare - 1)) != (numsquareperside - 1))){
+                if((!issquare[current - numsquareperside]) && (!hasbeen[current - numsquareperside])) {
+
+                }
+            }
+
+            hasbeen[current] = true;
+        }
+    }
+
+    return solved;
 }
