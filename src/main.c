@@ -6,7 +6,8 @@
 
 void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
-b8 mazenav(b8 *issquare);
+void mazegenclean(b8 *issquare, i32 *count, u32 end);
+b8 mazenav(b8 *issquare, u32 start, u32 end);
 
 static const u32 numsquare = 1024;
 static const u32 numsquareperside = 32;
@@ -32,16 +33,15 @@ int main(){
     //variables for the square logic array aka maze.
     b8 issquare[numsquare] = {};
     i32 count = 0;
-    i32 attemptcount = 0;
+    u32 start = numsquareperside;
+    u32 end = ((numsquareperside * numsquareperside) - numsquareperside - 1);
+
     mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
-    while(!mazenav(issquare)){
+    while(!mazenav(issquare, start, end)){
         count = 0;
-        ++ attemptcount;
         mazegenrandom(issquare, &count);
-        printf("\n%d", attemptcount);
     }
-    mazegenfillenclosedspace(issquare, &count);
-    attemptcount = 0;
+    mazegenclean(issquare, &count, end);
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
     f32 squarecalcx = (f32)(swidth / (numsquareperside + 2)); //+2 accounts for border.
@@ -60,14 +60,11 @@ int main(){
 
         if(IsKeyReleased(KEY_N)){
             mazegenrandom(issquare, &count);
-            while(!mazenav(issquare)){
+            while(!mazenav(issquare, start, end)){
                 count = 0;
-                attemptcount += 1;
                 mazegenrandom(issquare, &count);
-                printf("\n%d", attemptcount);
             }
-            mazegenfillenclosedspace(issquare, &count);
-            attemptcount = 0;
+            mazegenclean(issquare, &count, end);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -147,9 +144,20 @@ void mazegenfillenclosedspace(b8 *issquare, i32 *count){
     }
 }
 
-b8 mazenav(b8 *issquare){
-    u32 start = numsquareperside;
-    u32 end = ((numsquareperside * numsquareperside) - numsquareperside - 1);
+void mazegenclean(b8 *issquare, i32 *count, u32 end){
+   mazegenfillenclosedspace(issquare, count);
+
+   floop(numsquare){
+       if((!issquare[i]) && (i != end)){
+           if(!mazenav(issquare, i, end)){
+               issquare[i] = true;
+               ++*count;
+           }
+       }
+   }
+}
+
+b8 mazenav(b8 *issquare, u32 start, u32 end){
     b8 hasbeen[numsquare] = {};//checking off squares the algorithm has passed through so no doubling back.
     b8 issolvable = true; //potentially true until proven false.
     b8 solved = false;    //condition true when solved.
@@ -218,7 +226,6 @@ b8 mazenav(b8 *issquare){
             if(darray_length(navpaths) < 1){
                 issolvable = false;
             }
-            printf("\n%d", navpathstotal);
         }
     }
 
