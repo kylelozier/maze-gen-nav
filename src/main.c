@@ -8,8 +8,8 @@ void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
 b8 mazenav(b8 *issquare);
 
-static const u32 numsquare = 4096;
-static const u32 numsquareperside = 64;
+static const u32 numsquare = 256;
+static const u32 numsquareperside = 16;
 
 int main(){
     //initialize window and associated variables.
@@ -26,6 +26,8 @@ int main(){
     //initialize random generator.
     i32 randomseed = (i32)GetTime();
     SetRandomSeed(randomseed);
+
+    initialize_memory(); //used with ezmemory to track memory allocation.
 
     //variables for the square logic array aka maze.
     b8 issquare[numsquare] = {};
@@ -54,6 +56,10 @@ int main(){
 
         if(IsKeyReleased(KEY_N)){
             mazegenrandom(issquare, &count);
+            while(!mazenav(issquare)){
+                count = 0;
+                mazegenrandom(issquare, &count);
+            }
             mazegenfillenclosedspace(issquare, &count);
         }
 
@@ -196,6 +202,8 @@ b8 mazenav(b8 *issquare){
 
             hasbeen[current] = true;
             darray_pop_at(navpaths, i, navpaths);
+            --i;
+            --navpathstotal;
             if(darray_length(navpaths) < 1){
                 issolvable = false;
             }
