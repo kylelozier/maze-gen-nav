@@ -8,8 +8,8 @@ void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
 b8 mazenav(b8 *issquare);
 
-static const u32 numsquare = 256;
-static const u32 numsquareperside = 16;
+static const u32 numsquare = 1024;
+static const u32 numsquareperside = 32;
 
 int main(){
     //initialize window and associated variables.
@@ -32,12 +32,16 @@ int main(){
     //variables for the square logic array aka maze.
     b8 issquare[numsquare] = {};
     i32 count = 0;
+    i32 attemptcount = 0;
     mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
     while(!mazenav(issquare)){
         count = 0;
+        ++ attemptcount;
         mazegenrandom(issquare, &count);
+        printf("\n%d", attemptcount);
     }
     mazegenfillenclosedspace(issquare, &count);
+    attemptcount = 0;
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
     f32 squarecalcx = (f32)(swidth / (numsquareperside + 2)); //+2 accounts for border.
@@ -58,9 +62,12 @@ int main(){
             mazegenrandom(issquare, &count);
             while(!mazenav(issquare)){
                 count = 0;
+                attemptcount += 1;
                 mazegenrandom(issquare, &count);
+                printf("\n%d", attemptcount);
             }
             mazegenfillenclosedspace(issquare, &count);
+            attemptcount = 0;
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -158,6 +165,7 @@ b8 mazenav(b8 *issquare){
 
             if(((current - 1) < numsquare) && ((current & (numsquareperside-1)) != 0)){
                 if((!issquare[current - 1]) && (!hasbeen[current - 1])) {
+                    hasbeen[current - 1] = true;
                     if((current - 1) ==  end) {
                         solved = true;
                     }
@@ -169,6 +177,7 @@ b8 mazenav(b8 *issquare){
 
             if(((current + 1) < numsquare) && ((current & (numsquareperside-1)) != (numsquareperside - 1))){
                 if((!issquare[current + 1]) && (!hasbeen[current + 1])) {
+                    hasbeen[current + 1] = true;
                     if((current + 1) ==  end) {
                         solved = true;
                     }
@@ -180,6 +189,7 @@ b8 mazenav(b8 *issquare){
 
             if(((current + numsquareperside) < numsquare)){
                 if((!issquare[current + numsquareperside]) && (!hasbeen[current + numsquareperside])) {
+                    hasbeen[current + numsquareperside] = true;
                     if((current + numsquareperside) ==  end) {
                         solved = true;
                     }
@@ -191,6 +201,7 @@ b8 mazenav(b8 *issquare){
 
             if(((current - numsquareperside) < numsquare)){
                 if((!issquare[current - numsquareperside]) && (!hasbeen[current - numsquareperside])) {
+                    hasbeen[current - numsquareperside] = true;
                     if((current - numsquareperside) ==  end) {
                         solved = true;
                     }
@@ -207,6 +218,7 @@ b8 mazenav(b8 *issquare){
             if(darray_length(navpaths) < 1){
                 issolvable = false;
             }
+            printf("\n%d", navpathstotal);
         }
     }
 
