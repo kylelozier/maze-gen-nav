@@ -7,6 +7,8 @@
 void mazegenrandom(b8 *issquare, i32 *count);
 void mazegenfillenclosedspace(b8 *issquare, i32 *count);
 void mazegenclean(b8 *issquare, i32 *count, u32 end);
+void mazegenaddnoiseunconnected(b8* issquare, i32 *count);
+void mazegenaddnoiseconnected(b8* issquare, i32 *count, u32 start, u32 end);
 b8 mazenav(b8 *issquare, u32 start, u32 end);
 
 static const u32 numsquare = 1024;
@@ -14,8 +16,8 @@ static const u32 numsquareperside = 32;
 
 int main(){
     //initialize window and associated variables.
-    const i32 swidth = 700;
-    const i32 sheight = 700;
+    const i32 swidth = 1000;
+    const i32 sheight = 1000;
     InitWindow(swidth, sheight, "A*Mazing.");
     SetTargetFPS(60);
     if(!IsWindowReady()){
@@ -44,8 +46,8 @@ int main(){
     mazegenclean(issquare, &count, end);
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
-    f32 squarecalcx = (f32)(swidth / (numsquareperside + 2)); //+2 accounts for border.
-    f32 squarecalcy = (f32)(sheight / (numsquareperside +2));
+    f32 squarecalcx = ((f32)swidth / (f32)(numsquareperside + 2)); //+2 accounts for border.
+    f32 squarecalcy = ((f32)sheight / (f32)(numsquareperside +2));
     Vector2 squarepos = {squarecalcx, squarecalcy}; //Pos starts at top left from orgin (0.0f, 0.0f) when using Vector2.
     Vector2 squareside = {squarecalcx, squarecalcy};
     Vector2 squareposdynamic = squarepos; //dynamic positioning that gets reset each loop for draw loop.
@@ -65,6 +67,11 @@ int main(){
                 mazegenrandom(issquare, &count);
             }
             mazegenclean(issquare, &count, end);
+        }
+
+        if(IsKeyReleased(KEY_M)){
+            mazegenaddnoiseunconnected(issquare, &count);
+            mazegenaddnoiseconnected(issquare, &count, start, end);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -140,7 +147,7 @@ void mazegenfillenclosedspace(b8 *issquare, i32 *count){
                 fill = false;
             }
         }
-        if(fill){issquare[i] = true; ++*count;}
+        if(fill){ ++*count;}
     }
 }
 
@@ -155,6 +162,51 @@ void mazegenclean(b8 *issquare, i32 *count, u32 end){
            }
        }
    }
+}
+
+void mazegenaddnoiseunconnected(b8* issquare,i32 *count){
+    b8 temp[numsquare] = {}; //initialize a temp to store random noise and apply to unconnected areas on issquare array.
+    {
+        b8 unconnected = true;
+        floop(numsquare){
+            unconnected = true;
+            if(((i-1) < numsquare) && ((i & (numsquareperside-1)) != 0)){
+                if(!issquare[i-1]) {
+                    unconnected = false;
+                }
+            }
+
+            if(((i+1) < numsquare) && ((i & (numsquareperside-1)) != (numsquareperside - 1))){
+                if(!issquare[i+1]) {
+                    unconnected = false;
+                }
+            }
+
+            if(((i+numsquareperside) < numsquare)){
+                if(!issquare[i+numsquareperside]) {
+                    unconnected = false;
+                }
+            }
+
+            if(((i-numsquareperside) < numsquare)){
+                if(!issquare[i-numsquareperside]) {
+                    unconnected = false;
+                }
+            }
+            if(unconnected){
+                i32 randomnum = GetRandomValue(0, 1);
+                if(randomnum == 0) {temp[i] = true; --*count;}
+                else {temp[i] = false;}
+            }
+        }
+        floop(numsquare){
+            issquare[i] = (temp[i]);
+        }
+    }
+}
+
+void mazegenaddnoiseconnected(b8* issquare,i32* count, u32 start, u32 end){
+
 }
 
 b8 mazenav(b8 *issquare, u32 start, u32 end){
