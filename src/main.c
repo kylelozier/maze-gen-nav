@@ -167,6 +167,11 @@ void mazegenclean(b8 *issquare, i32 *count, u32 end){
 void mazegenaddnoiseunconnected(b8* issquare,i32 *count){
     b8 temp[numsquare] = {}; //initialize a temp to store random noise and apply to unconnected areas on issquare array.
     {
+        floop(numsquare){
+            temp[i] = issquare[i];
+        }
+    }
+    {
         b8 unconnected = true;
         floop(numsquare){
             unconnected = true;
