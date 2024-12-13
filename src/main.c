@@ -4,15 +4,23 @@
 #include "raymath.h"
 #include "ezmemory.h"
 
-void mazegenrandom(b8 *issquare, i32 *count);
-void mazegenfillenclosedspace(b8 *issquare, i32 *count);
-void mazegenclean(b8 *issquare, i32 *count, u32 end);
-void mazegenaddnoiseunconnected(b8* issquare, i32 *count);
-void mazegenaddnoiseconnected(b8* issquare, i32 *count, u32 start, u32 end);
-b8 mazenav(b8 *issquare, u32 start, u32 end);
-
 static const u32 numsquare = 1024;
 static const u32 numsquareperside = 32;
+
+typedef struct a_maze {
+    u32 start;
+    u32 end;
+    i32 count;
+    b8 issquare[1024];
+} a_maze;
+
+void mazegenrandom(a_maze* maze);
+void mazegenfillenclosedspace(a_maze* maze);
+void mazegenclean(a_maze* maze);
+void mazegenaddnoiseunconnected(a_maze* maze);
+void mazegenconnecttempnoise(a_maze* maze, u32* temp);
+b8 mazenav(a_maze* maze, u32 navstart, u32 navend);
+
 
 int main(){
     //initialize window and associated variables.
@@ -32,18 +40,15 @@ int main(){
 
     initialize_memory(); //used with ezmemory to track memory allocation.
 
-    //variables for the square logic array aka maze.
-    b8 issquare[numsquare] = {};
-    i32 count = 0;
-    u32 start = numsquareperside;
-    u32 end = ((numsquareperside * numsquareperside) - numsquareperside - 1);
+    //variables for the square logic array aka maze initialized in struct.
+    static a_maze maze = {numsquareperside, ((numsquareperside * numsquareperside) - numsquareperside - 1), 0, {}};
 
-    mazegenrandom(issquare, &count);//for loop setting squares to true/false for use with draw and pathing logic.
-    while(!mazenav(issquare, start, end)){
-        count = 0;
-        mazegenrandom(issquare, &count);
+    mazegenrandom(&maze);//for loop setting squares to true/false for use with draw and pathing logic.
+    while(!mazenav(&maze, maze.start, maze.end)){
+        maze.count = 0;
+        mazegenrandom(&maze);
     }
-    mazegenclean(issquare, &count, end);
+    mazegenclean(&maze);
 
     //math and variables for squares positioning and sides that account for resolution. 1.0f = 1 pixel.
     f32 squarecalcx = ((f32)swidth / (f32)(numsquareperside + 2)); //+2 accounts for border.
@@ -61,23 +66,23 @@ int main(){
         ClearBackground(DARKGRAY);
 
         if(IsKeyReleased(KEY_N)){
-            mazegenrandom(issquare, &count);
-            while(!mazenav(issquare, start, end)){
-                count = 0;
-                mazegenrandom(issquare, &count);
+            mazegenrandom(&maze);
+            while(!mazenav(&maze, maze.start, maze.end)){
+                maze.count = 0;
+                mazegenrandom(&maze);
             }
-            mazegenclean(issquare, &count, end);
+            mazegenclean(&maze);
         }
 
         if(IsKeyReleased(KEY_M)){
-            mazegenaddnoiseunconnected(issquare, &count);
-            mazegenaddnoiseconnected(issquare, &count, start, end);
+            mazegenaddnoiseunconnected(&maze);
+            //mazegenaddnoiseconnected(issquare, &count, start, end);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
         {
             floop(numsquare){
-                if(!issquare[i]) {DrawRectangleV(squareposdynamic, squareside, LIGHTGRAY);}
+                if(!maze.issquare[i]) {DrawRectangleV(squareposdynamic, squareside, LIGHTGRAY);}
                 //else{DrawRectangleV(squareposdynamic, squareside, LIGHTGRAY);}
 
                 Vector2 addthis = {squarecalcx, 0.0f};
@@ -97,78 +102,80 @@ int main(){
         EndDrawing();
     }
 
-    printf("\n\n%d squares in array. \n%f pos\n%f side", count, squarecalcx, squarecalcy);
+    i32 array_length = sizeof(maze);
+    printf("\n\n%d squares in array. \n%f pos\n%f side\n%d", maze.count, squarecalcx, squarecalcy, array_length);
 
     return 0;
 }
 
-void mazegenrandom(b8 *issquare, i32 *count){
-    *count = 0;
+void mazegenrandom(a_maze *maze){
+    maze->count = 0;
     floop(numsquare){
         i32 randomnum = GetRandomValue(0, 1);
-        if(randomnum == 0) {issquare[i] = true; ++*count;}
-        else {issquare[i] = false;}
+        if(randomnum == 0) {maze->issquare[i] = true; ++maze->count;}
+        else {maze->issquare[i] = false;}
     }//for loop setting squares to true/false for use with draw and pathing logic.
 
-    if(issquare[numsquareperside]){
-        issquare[numsquareperside] = false; //make entrance always have 1 path by it.
-        --*count;
+    if(maze->issquare[numsquareperside]){
+        maze->issquare[numsquareperside] = false; //make entrance always have 1 path by it.
+        --maze->count;
     }
-    if(issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)]) {
-        issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)] = false; //makes exit always have 1 path by it.
-        --count;
+    if(maze->issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)]) {
+        maze->issquare[((numsquareperside * numsquareperside) - numsquareperside - 1)] = false; //makes exit always have 1 path by it.
+        --maze->count;
     }
 }
 
-void mazegenfillenclosedspace(b8 *issquare, i32 *count){
+void mazegenfillenclosedspace(a_maze *maze){
     b8 fill = true;
     floop(numsquare){
         fill = true;
         if(((i-1) < numsquare) && ((i & (numsquareperside-1)) != 0)){
-            if(!issquare[i-1]) {
+            if(!maze->issquare[i-1]) {
                 fill = false;
             }
         }
 
         if(((i+1) < numsquare) && ((i & (numsquareperside-1)) != (numsquareperside - 1))){
-            if(!issquare[i+1]) {
+            if(!maze->issquare[i+1]) {
                 fill = false;
             }
         }
 
         if(((i+numsquareperside) < numsquare)){
-            if(!issquare[i+numsquareperside]) {
+            if(!maze->issquare[i+numsquareperside]) {
                 fill = false;
             }
         }
 
         if(((i-numsquareperside) < numsquare)){
-            if(!issquare[i-numsquareperside]) {
+            if(!maze->issquare[i-numsquareperside]) {
                 fill = false;
             }
         }
-        if(fill){ ++*count;}
+        if(fill){ ++maze->count;}
     }
 }
 
-void mazegenclean(b8 *issquare, i32 *count, u32 end){
-   mazegenfillenclosedspace(issquare, count);
+void mazegenclean(a_maze *maze){
+   mazegenfillenclosedspace(maze);
 
    floop(numsquare){
-       if((!issquare[i]) && (i != end)){
-           if(!mazenav(issquare, i, end)){
-               issquare[i] = true;
-               ++*count;
+       if((!maze->issquare[i]) && (i != maze->end)){
+           if(!mazenav(maze, i, maze->end)){
+               maze->issquare[i] = true;
+               ++maze->count;
            }
        }
    }
 }
 
-void mazegenaddnoiseunconnected(b8* issquare,i32 *count){
+void mazegenaddnoiseunconnected(a_maze *maze){
     b8 temp[numsquare] = {}; //initialize a temp to store random noise and apply to unconnected areas on issquare array.
+    void* outtemp = darray_create(u32); //created to pass array into a function that connects these unconnected noise created tiles with the main path.
     {
         floop(numsquare){
-            temp[i] = issquare[i];
+            temp[i] = maze->issquare[i];
         }
     }
     {
@@ -176,51 +183,55 @@ void mazegenaddnoiseunconnected(b8* issquare,i32 *count){
         floop(numsquare){
             unconnected = true;
             if(((i-1) < numsquare) && ((i & (numsquareperside-1)) != 0)){
-                if(!issquare[i-1]) {
+                if(!maze->issquare[i-1]) {
                     unconnected = false;
                 }
             }
 
             if(((i+1) < numsquare) && ((i & (numsquareperside-1)) != (numsquareperside - 1))){
-                if(!issquare[i+1]) {
+                if(!maze->issquare[i+1]) {
                     unconnected = false;
                 }
             }
 
             if(((i+numsquareperside) < numsquare)){
-                if(!issquare[i+numsquareperside]) {
+                if(!maze->issquare[i+numsquareperside]) {
                     unconnected = false;
                 }
             }
 
             if(((i-numsquareperside) < numsquare)){
-                if(!issquare[i-numsquareperside]) {
+                if(!maze->issquare[i-numsquareperside]) {
                     unconnected = false;
                 }
             }
             if(unconnected){
                 i32 randomnum = GetRandomValue(0, 1);
-                if(randomnum == 0) {temp[i] = true; --*count;}
-                else {temp[i] = false;}
+                if(randomnum == 0) {temp[i] = true; --maze->count;}
+                else {temp[i] = false; darray_push(outtemp, i)};
             }
         }
         floop(numsquare){
-            issquare[i] = (temp[i]);
+            maze->issquare[i] = temp[i];
         }
+        mazegenconnecttempnoise(maze, outtemp);
     }
 }
 
-void mazegenaddnoiseconnected(b8* issquare,i32* count, u32 start, u32 end){
+void mazegenconnecttempnoise(a_maze *maze, u32 *temp){
+//connects b8 temp[] i values from a passed dynamic array to issquare array.  This fills out more maze in allotted space.
 
+
+    darray_destroy(temp);
 }
 
-b8 mazenav(b8 *issquare, u32 start, u32 end){
+b8 mazenav(a_maze *maze, u32 navstart, u32 navend){
     b8 hasbeen[numsquare] = {};//checking off squares the algorithm has passed through so no doubling back.
     b8 issolvable = true; //potentially true until proven false.
     b8 solved = false;    //condition true when solved.
 
     void *navpaths = darray_create(u32); //dynamic array that resizes as u32 points [i] of issquare[] array are added.
-    darray_push(navpaths, start); //add start to array to begin a path finding function.
+    darray_push(navpaths, navstart); //add start to array to begin a path finding function.
 
     while((issolvable == true) && (solved == false)){
         u32 navpathstotal = (u32)darray_length(navpaths); //cast darray_length u64 length to u32 for use in floop.
@@ -229,9 +240,9 @@ b8 mazenav(b8 *issquare, u32 start, u32 end){
             u32 current = currentsquare[i];
 
             if(((current - 1) < numsquare) && ((current & (numsquareperside-1)) != 0)){
-                if((!issquare[current - 1]) && (!hasbeen[current - 1])) {
+                if((!maze->issquare[current - 1]) && (!hasbeen[current - 1])) {
                     hasbeen[current - 1] = true;
-                    if((current - 1) ==  end) {
+                    if((current - 1) ==  navend) {
                         solved = true;
                     }
                     else{
@@ -241,9 +252,9 @@ b8 mazenav(b8 *issquare, u32 start, u32 end){
             }
 
             if(((current + 1) < numsquare) && ((current & (numsquareperside-1)) != (numsquareperside - 1))){
-                if((!issquare[current + 1]) && (!hasbeen[current + 1])) {
+                if((!maze->issquare[current + 1]) && (!hasbeen[current + 1])) {
                     hasbeen[current + 1] = true;
-                    if((current + 1) ==  end) {
+                    if((current + 1) ==  navend) {
                         solved = true;
                     }
                     else{
@@ -253,9 +264,9 @@ b8 mazenav(b8 *issquare, u32 start, u32 end){
             }
 
             if(((current + numsquareperside) < numsquare)){
-                if((!issquare[current + numsquareperside]) && (!hasbeen[current + numsquareperside])) {
+                if((!maze->issquare[current + numsquareperside]) && (!hasbeen[current + numsquareperside])) {
                     hasbeen[current + numsquareperside] = true;
-                    if((current + numsquareperside) ==  end) {
+                    if((current + numsquareperside) ==  navend) {
                         solved = true;
                     }
                     else{
@@ -265,9 +276,9 @@ b8 mazenav(b8 *issquare, u32 start, u32 end){
             }
 
             if(((current - numsquareperside) < numsquare)){
-                if((!issquare[current - numsquareperside]) && (!hasbeen[current - numsquareperside])) {
+                if((!maze->issquare[current - numsquareperside]) && (!hasbeen[current - numsquareperside])) {
                     hasbeen[current - numsquareperside] = true;
-                    if((current - numsquareperside) ==  end) {
+                    if((current - numsquareperside) ==  navend) {
                         solved = true;
                     }
                     else{
