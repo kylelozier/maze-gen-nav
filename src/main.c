@@ -4,14 +4,15 @@
 #include "raymath.h"
 #include "ezmemory.h"
 
-static const u32 numsquare = 1024;
-static const u32 numsquareperside = 32;
+#define NUMSQUAREPERSIDE 32
+static const u32 numsquareperside = NUMSQUAREPERSIDE;
+static const u32 numsquare = NUMSQUAREPERSIDE * NUMSQUAREPERSIDE;
 
 typedef struct a_maze {
     u32 start;
     u32 end;
     i32 count;
-    b8 issquare[1024];
+    b8 issquare[(NUMSQUAREPERSIDE * NUMSQUAREPERSIDE)];
 } a_maze;
 
 void mazegenrandom(a_maze* maze);
@@ -20,7 +21,6 @@ void mazegenclean(a_maze* maze);
 void mazegenaddnoiseunconnected(a_maze* maze);
 void mazegenconnecttempnoise(a_maze* maze, u32* temp);
 b8 mazenav(a_maze* maze, u32 navstart, u32 navend);
-
 
 int main(){
     //initialize window and associated variables.
@@ -76,7 +76,6 @@ int main(){
 
         if(IsKeyReleased(KEY_M)){
             mazegenaddnoiseunconnected(&maze);
-            //mazegenaddnoiseconnected(issquare, &count, start, end);
         }
 
         squareposdynamic = squarepos; //resets square pos before drawing all squares in frame.
@@ -211,16 +210,62 @@ void mazegenaddnoiseunconnected(a_maze *maze){
                 else {temp[i] = false; darray_push(outtemp, i)};
             }
         }
+
         floop(numsquare){
             maze->issquare[i] = temp[i];
         }
+
         mazegenconnecttempnoise(maze, outtemp);
+        mazegenclean(maze);
     }
 }
 
 void mazegenconnecttempnoise(a_maze *maze, u32 *temp){
-//connects b8 temp[] i values from a passed dynamic array to issquare array.  This fills out more maze in allotted space.
+//connects b8 temp[] i values from a passed dynamic array to issquare array.  This carves out more maze in otherwise empty space.
+    i32 randomnum = 0;
 
+    floop(darray_length(temp)){
+        u32 mazepos = temp[i];
+        if(((mazepos - 2) < numsquare) && (((temp[i] - 1) & (numsquareperside-1)) != 0)){
+            if(!maze->issquare[mazepos - 2]) {
+                randomnum = GetRandomValue(0, 4);
+                if(randomnum == 0) {
+                    --maze->count;
+                    maze->issquare[mazepos - 1] = false;
+                }
+            }
+        }
+
+        if(((mazepos + 2) < numsquare) && (((temp[i] + 1) & (numsquareperside-1)) != (numsquareperside - 1))){
+            if(!maze->issquare[mazepos + 2]) {
+                randomnum = GetRandomValue(0, 4);
+                if(randomnum == 0) {
+                    --maze->count;
+                    maze->issquare[mazepos + 1] = false;
+                }
+            }
+        }
+
+        if(((mazepos + (numsquareperside * 2)) < numsquare)){
+            if(!maze->issquare[mazepos + (numsquareperside * 2)]) {
+                randomnum = GetRandomValue(0, 4);
+                if(randomnum == 0) {
+                    --maze->count;
+                    maze->issquare[mazepos + numsquareperside] = false;
+                }
+            }
+        }
+
+        if(((mazepos - (numsquareperside * 2)) < numsquare)){
+            if(!maze->issquare[mazepos - (numsquareperside * 2)]) {
+                randomnum = GetRandomValue(0, 4);
+                if(randomnum == 0) {
+                    --maze->count;
+                    maze->issquare[mazepos - numsquareperside] = false;
+                }
+            }
+        }
+    }
 
     darray_destroy(temp);
 }
